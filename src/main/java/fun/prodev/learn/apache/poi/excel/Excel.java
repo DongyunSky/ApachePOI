@@ -4,15 +4,29 @@ import org.apache.poi.hssf.usermodel.*;
 import org.apache.poi.hssf.util.HSSFColor;
 import org.apache.poi.poifs.filesystem.POIFSFileSystem;
 import org.apache.poi.ss.usermodel.CellType;
+import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.HorizontalAlignment;
+import org.apache.poi.ss.usermodel.VerticalAlignment;
+import org.apache.poi.ss.util.CellRangeAddress;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
 import java.io.*;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 /**
  * @author prodev
  * @date 2019/5/12 20:55
  * @description POI 操作 Excel 文件
  */
+@RestController
+@RequestMapping("excel")
 public class Excel {
 
     private static final String filePath = "D:\\Download\\Temp\\template.xls";
@@ -104,6 +118,118 @@ public class Excel {
             }
         }
         bufferedInputStream.close();
+    }
+
+    @RequestMapping("export")
+    public void exportExcel(HttpServletResponse response, HttpSession session, String name) throws IOException {
+        String[] tableHeaders = {"id", "姓名", "年龄"};
+        HSSFWorkbook workbook = new HSSFWorkbook();
+        HSSFSheet sheet = workbook.createSheet("Sheet1");
+        HSSFCellStyle cellStyle = workbook.createCellStyle();
+        cellStyle.setAlignment(HorizontalAlignment.CENTER);
+        cellStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+        Font font = workbook.createFont();
+        font.setBold(true);
+        cellStyle.setFont(font);
+
+        // 将第一行的三个单元格给合并
+        sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, 2));
+        HSSFRow row = sheet.createRow(0);
+        HSSFCell beginCell = row.createCell(0);
+        beginCell.setCellValue("通讯录");
+        beginCell.setCellStyle(cellStyle);
+
+        row = sheet.createRow(1);
+        // 创建表头
+        for (int i = 0; i < tableHeaders.length; i++) {
+            HSSFCell cell = row.createCell(i);
+            cell.setCellValue(tableHeaders[i]);
+            cell.setCellStyle(cellStyle);
+        }
+        List<User> users = new ArrayList<>();
+        users.add(new User("1", "20", "张三"));
+        users.add(new User("2", "22", "李四"));
+        users.add(new User("3", "21", "王五"));
+        for (int i = 0; i < users.size(); i++) {
+            row = sheet.createRow(i + 2);
+            User user = users.get(i);
+            row.createCell(0).setCellValue(user.getId());
+            row.createCell(1).setCellValue(user.getName());
+            row.createCell(2).setCellValue(user.getAge());
+        }
+        OutputStream outputStream = response.getOutputStream();
+        response.reset();
+        response.setContentType("application/vnd.ms-excel");
+        response.setHeader("Content-disposition", "attachment;filename=template.xls");
+        workbook.write(outputStream);
+        outputStream.flush();
+        outputStream.close();
+    }
+
+    @RequestMapping("import")
+    public void importExcel(@RequestParam("file") MultipartFile file) throws IOException {
+        InputStream inputStream = file.getInputStream();
+        BufferedInputStream bufferedInputStream = new BufferedInputStream(inputStream);
+        POIFSFileSystem fileSystem = new POIFSFileSystem(bufferedInputStream);
+        HSSFWorkbook workbook = new HSSFWorkbook(fileSystem);
+
+        HSSFSheet sheet = workbook.getSheetAt(0);
+        int lastRowNum = sheet.getLastRowNum();
+        for (int i = 2; i <= lastRowNum; i++) {
+            HSSFRow row = sheet.getRow(i);
+            String id = row.getCell(0).getStringCellValue();
+            String name = row.getCell(1).getStringCellValue();
+            String age = row.getCell(2).getStringCellValue();
+            System.out.println(id + "-" + name + "-" + age);
+        }
+    }
+
+    class User {
+        String id;
+        String age;
+        String name;
+
+        public User() {
+        }
+
+        public User(String id, String age, String name) {
+            this.id = id;
+            this.age = age;
+            this.name = name;
+        }
+
+        public String getId() {
+            return id;
+        }
+
+        public void setId(String id) {
+            this.id = id;
+        }
+
+        public String getAge() {
+            return age;
+        }
+
+        public void setAge(String age) {
+            this.age = age;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        @Override
+        public String toString() {
+            return "User{" +
+                    "id='" + id + '\'' +
+                    ", age='" + age + '\'' +
+                    ", name='" + name + '\'' +
+                    '}';
+        }
     }
 
 }
