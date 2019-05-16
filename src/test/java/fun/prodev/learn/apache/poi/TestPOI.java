@@ -22,4 +22,10 @@ public class TestPOI {
         Excel.createExcel();
         Excel.readExcel();
     }
+
+    @Test
+    public void faf() throws IOException {
+        Excel.createExcel();
+        Excel.readExcel();
+    }
 }
